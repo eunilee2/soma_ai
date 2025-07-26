@@ -52,3 +52,17 @@ export async function createAppointmentEvent({ summary, description, startTime, 
 
   return response.result; // contains htmlLink and other metadata
 }
+
+// store the event metadata
+const result = await response.json();
+
+const savedDoctorEvent = {
+id: result.id,
+summary: result.summary,
+start: result.start.dateTime,
+end: result.end.dateTime,
+doctorEmail: result.attendees?.[0]?.email || null,
+htmlLink: result.htmlLink
+};
+
+console.log("✅ Doctor appointment created:", savedDoctorEvent);
