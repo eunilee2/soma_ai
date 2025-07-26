@@ -2,7 +2,7 @@ import anthropic
 
 client = anthropic.Anthropic(
     # defaults to os.environ.get("ANTHROPIC_API_KEY")
-    api_key="CLAUDE_API_KEY",
+    # api_key="ANTHROPIC_API_KEY"  # Replace with your actual API key
 )
 
 # Replace placeholders like {{USER_MESSAGE}} with real values,
