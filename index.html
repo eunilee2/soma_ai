@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Doctor Appointment Scheduler</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <h1>Doctor Appointment Scheduler</h1>
@@ -13,25 +14,58 @@
 
   <p id="status"></p>
 
-  <!-- Google API loader -->
-  <script src="https://apis.google.com/js/api.js"></script>
-  <script typ="module">
-    import { initGoogleClient, signInWithGoogle, createAppointmentEvent } from './gcal.js';
+  <script type="module">
+    import { CONFIG } from './config.js';
 
-    document.getElementById('authBtn').addEventListener('click', async () => {
-      await initGoogleClient();
-      await signInWithGoogle();
-    });
+    const CLIENT_ID = CONFIG.GCAL_CLIENT_ID;
+    const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+    let accessToken = null;
+    let tokenClient = null;
 
-    document.getElementById('scheduleBtn').addEventListener('click', async () => {
-      await createAppointmentEvent({
-        summary: "Appointment with Dr. Lee",
-        description: "Follow-up for migraines",
-        startTime: "2025-08-04T09:00:00-04:00",
-        endTime: "2025-08-04T09:30:00-04:00",
-        doctorEmail: "dr.lee@healthclinic.com"
+    window.onload = () => {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+          accessToken = tokenResponse.access_token;
+          document.getElementById('status').innerText = `✅ Access token acquired.`;
+          document.getElementById('scheduleBtn').disabled = false;
+        }
       });
-    });
+
+      document.getElementById('authBtn').addEventListener('click', () => {
+        tokenClient.requestAccessToken();
+      });
+
+      document.getElementById('scheduleBtn').addEventListener('click', async () => {
+        const event = {
+          summary: "Appointment with Dr. Lee",
+          description: "Follow-up for migraines",
+          start: {
+            dateTime: "2025-08-04T09:00:00-04:00",
+            timeZone: "America/New_York"
+          },
+          end: {
+            dateTime: "2025-08-04T09:30:00-04:00",
+            timeZone: "America/New_York"
+          },
+          attendees: [{ email: "dr.lee@healthclinic.com" }],
+          reminders: { useDefault: true }
+        };
+
+        const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(event)
+        });
+
+        const result = await response.json();
+        document.getElementById('status').innerText = `✅ Event created: ${result.htmlLink}`;
+      });
+    };
   </script>
 </body>
 </html>
