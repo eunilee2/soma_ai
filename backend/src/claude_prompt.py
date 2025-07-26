@@ -1,5 +1,6 @@
 import anthropic
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -62,4 +63,15 @@ message = client.messages.create(
         }
     ]
 )
-print(message.content[0].text)
+
+claudeParsed = message.content[0].text
+print(claudeParsed)
+
+# Write to JSON file for JavaScript to read
+try:
+    parsed_json = json.loads(claudeParsed)
+    with open('claude_output.json', 'w') as f:
+        json.dump(parsed_json, f, indent=2)
+    print("✅ Saved to claude_output.json")
+except json.JSONDecodeError:
+    print("❌ Failed to parse Claude output as JSON")

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Appointment Scheduler</title>
+</head>
+<body>
+  <h1>Doctor Appointment Scheduler</h1>
+
+  <button id="authBtn">Sign In with Google</button>
+  <button id="scheduleBtn" disabled>Schedule Appointment</button>
+
+  <p id="status"></p>
+
+  <!-- Google API loader -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script typ="module">
+    import { initGoogleClient, signInWithGoogle, createAppointmentEvent } from './gcal.js';
+
+    document.getElementById('authBtn').addEventListener('click', async () => {
+      await initGoogleClient();
+      await signInWithGoogle();
+    });
+
+    document.getElementById('scheduleBtn').addEventListener('click', async () => {
+      await createAppointmentEvent({
+        summary: "Appointment with Dr. Lee",
+        description: "Follow-up for migraines",
+        startTime: "2025-08-04T09:00:00-04:00",
+        endTime: "2025-08-04T09:30:00-04:00",
+        doctorEmail: "dr.lee@healthclinic.com"
+      });
+    });
+  </script>
+</body>
+</html>

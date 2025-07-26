@@ -1,0 +1,11 @@
+{
+  "intent": "schedule_appointment",
+  "doctor_name": "Dr. Smith",
+  "specialty": null,
+  "symptoms": "headaches",
+  "preferred_time": "morning",
+  "location": null,
+  "returning_patient": true,
+  "needs_insurance_verification": true,
+  "additional_notes": "Patient requests check-up"
+}
