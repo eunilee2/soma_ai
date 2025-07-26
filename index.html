@@ -11,6 +11,7 @@
 
   <button id="authBtn">Sign In with Google</button>
   <button id="scheduleBtn" disabled>Schedule Appointment</button>
+  <button id="checkConflictsBtn" disabled>Check for Conflicts</button>
 
   <p id="status"></p>
 
@@ -22,6 +23,115 @@
     let accessToken = null;
     let tokenClient = null;
 
+    // Define functions at the top level so they can be used anywhere
+    async function checkForConflicts() {
+      const savedEvent = JSON.parse(localStorage.getItem("savedDoctorEvent"));
+      if (!savedEvent) {
+        console.log("❌ No saved doctor appointment found");
+        return;
+      }
+
+      console.log("🔍 Checking for conflicts with:", savedEvent);
+      
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${savedEvent.start}&timeMax=${savedEvent.end}`;
+
+      try {
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        });
+
+        const events = await response.json();
+        console.log("📅 Found events in time slot:", events.items);
+        
+        const conflictingEvents = events.items.filter(event => event.id !== savedEvent.id);
+
+        if (conflictingEvents.length > 0) {
+          console.warn("🚨 Conflict detected! Rescheduling doctor appointment...");
+          document.getElementById('status').innerText = "🚨 Conflict detected! Rescheduling...";
+          await rescheduleDoctorAppointment(savedEvent);
+        } else {
+          console.log("✅ No conflict with doctor appointment.");
+          document.getElementById('status').innerText = "✅ No conflicts found.";
+        }
+      } catch (error) {
+        console.error("❌ Error checking conflicts:", error);
+        document.getElementById('status').innerText = `❌ Error: ${error.message}`;
+      }
+    }
+
+    async function rescheduleDoctorAppointment(originalEvent) {
+      console.log("📅 Rescheduling doctor appointment...");
+      const intervalMinutes = 30;
+      let newStartTime = new Date(originalEvent.end);
+      let attempts = 0;
+      const maxAttempts = 10; // Prevent infinite loop
+
+      while (attempts < maxAttempts) {
+        const newEndTime = new Date(newStartTime.getTime() + intervalMinutes * 60000);
+
+        const timeMin = newStartTime.toISOString();
+        const timeMax = newEndTime.toISOString();
+
+        console.log(`🔍 Checking slot ${attempts + 1}: ${timeMin} to ${timeMax}`);
+
+        const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}`;
+        
+        try {
+          const response = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${accessToken}`
+            }
+          });
+
+          const result = await response.json();
+          const isFree = result.items.length === 0;
+
+          console.log(`Slot ${attempts + 1} free:`, isFree);
+
+          if (isFree) {
+            // Update the event
+            const updateResponse = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${originalEvent.id}`, {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                start: { dateTime: newStartTime.toISOString(), timeZone: "America/New_York" },
+                end: { dateTime: newEndTime.toISOString(), timeZone: "America/New_York" }
+              })
+            });
+
+            const updated = await updateResponse.json();
+
+            const updatedEvent = {
+              ...originalEvent,
+              start: updated.start.dateTime,
+              end: updated.end.dateTime
+            };
+
+            localStorage.setItem("savedDoctorEvent", JSON.stringify(updatedEvent));
+            document.getElementById("status").innerText = `📅 Rescheduled to ${new Date(updatedEvent.start).toLocaleString()}`;
+            console.log("📅 Rescheduled appointment to:", updatedEvent.start);
+            break;
+          } else {
+            newStartTime = new Date(newStartTime.getTime() + intervalMinutes * 60000);
+            attempts++;
+          }
+        } catch (error) {
+          console.error("❌ Error rescheduling:", error);
+          break;
+        }
+      }
+
+      if (attempts >= maxAttempts) {
+        console.warn("⚠️ Could not find a free slot after 10 attempts");
+        document.getElementById("status").innerText = "⚠️ Could not find a free slot";
+      }
+    }
+
     window.onload = () => {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
@@ -30,6 +140,7 @@
           accessToken = tokenResponse.access_token;
           document.getElementById('status').innerText = `✅ Access token acquired.`;
           document.getElementById('scheduleBtn').disabled = false;
+          document.getElementById('checkConflictsBtn').disabled = false;
         }
       });
 
@@ -53,98 +164,53 @@
           reminders: { useDefault: true }
         };
 
-        const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(event)
-        });
+        try {
+          const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(event)
+          });
 
-        const result = await response.json();
-        // document.getElementById('status').innerText = `✅ Event created: ${result.htmlLink}`;
-        // 🧠 Save the event metadata
-        const savedDoctorEvent = {
-        id: result.id,
-        summary: result.summary,
-        start: result.start.dateTime,
-        end: result.end.dateTime,
-        doctorEmail: result.attendees?.[0]?.email || null,
-        htmlLink: result.htmlLink
-        };
+          const result = await response.json();
+          
+          if (response.ok) {
+            const savedDoctorEvent = {
+              id: result.id,
+              summary: result.summary,
+              start: result.start.dateTime,
+              end: result.end.dateTime,
+              doctorEmail: result.attendees?.[0]?.email || null,
+              htmlLink: result.htmlLink
+            };
 
-        // ✅ Save to localStorage
-        localStorage.setItem("savedDoctorEvent", JSON.stringify(savedDoctorEvent));
+            localStorage.setItem("savedDoctorEvent", JSON.stringify(savedDoctorEvent));
+            document.getElementById('status').innerText = `✅ Event created: ${result.htmlLink}`;
+            console.log("📌 Saved doctor appointment to localStorage:", savedDoctorEvent);
 
-        // ✅ Notify user
-        document.getElementById('status').innerText = `✅ Event created: ${result.htmlLink}`;
-        console.log("📌 Saved doctor appointment to localStorage:", savedDoctorEvent);
+            // Automatically check for conflicts after creating
+            setTimeout(() => checkForConflicts(), 1000);
+          } else {
+            console.error("❌ Error creating event:", result);
+            document.getElementById('status').innerText = `❌ Error: ${result.error?.message || 'Unknown error'}`;
+          }
+        } catch (error) {
+          console.error("❌ Network error:", error);
+          document.getElementById('status').innerText = `❌ Error: ${error.message}`;
+        }
       });
-    const stored = localStorage.getItem("savedDoctorEvent");
-    if (stored) {
+
+      // Add button to manually check conflicts
+      document.getElementById('checkConflictsBtn').addEventListener('click', checkForConflicts);
+
+      // Check for existing saved events on load
+      const stored = localStorage.getItem("savedDoctorEvent");
+      if (stored) {
         const parsed = JSON.parse(stored);
         console.log("📂 Loaded previous doctor appointment:", parsed);
-        // You could check for conflicts here if needed
-
-        // check for conflicts here logic
-        async function checkForConflicts() {
-            const savedEvent = JSON.parse(localStorage.getItem("savedDoctorEvent"));
-            if (!savedEvent) return;
-
-            const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${savedEvent.start}&timeMax=${savedEvent.end}`;
-
-            const response = await fetch(url, {
-                headers: {
-                Authorization: `Bearer ${accessToken}`
-                }
-            });
-
-            const events = await response.json();
-            const conflictingEvents = events.items.filter(event => event.id !== savedEvent.id);
-
-            if (conflictingEvents.length > 0) {
-                console.warn("🚨 Conflict detected! Rescheduling doctor appointment...");
-                await rescheduleDoctorAppointment(savedEvent);
-            } else {
-                console.log("✅ No conflict with doctor appointment.");
-            }
-        }}
-
-
-        // patch the doctor's appointment 
-        async function rescheduleDoctorAppointment(originalEvent) {
-        const newStart = "2025-08-04T10:00:00-04:00";
-        const newEnd = "2025-08-04T10:30:00-04:00";
-
-        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${originalEvent.id}`, {
-            method: "PATCH",
-            headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-            start: { dateTime: newStart },
-            end: { dateTime: newEnd }
-            })
-        });
-
-        const updated = await response.json();
-
-        // Update saved appointment in localStorage
-        const updatedEvent = {
-            ...originalEvent,
-            start: updated.start.dateTime,
-            end: updated.end.dateTime
-        };
-
-        localStorage.setItem("savedDoctorEvent", JSON.stringify(updatedEvent));
-        console.log("📅 Doctor appointment rescheduled to:", updatedEvent.start);
-        document.getElementById("status").innerText = `📅 Rescheduled to ${updatedEvent.start}`;
-        }
-
-        setInterval(checkForConflicts, 10_000); // Every 10 seconds
-
+      }
     };
   </script>
 </body>
