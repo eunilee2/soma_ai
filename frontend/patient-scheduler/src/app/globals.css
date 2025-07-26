@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.typewriter {
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  display: inline-block;
+  border-right: 2px solid;
+  width: 0;
+  animation: typing 2.5s steps(20) 1 forwards, blink 0.75s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 20ch } /* "Healthcare, Handled." is 20 characters */
+}
+
+@keyframes blink {
+  50% { border-color: transparent; }
+}
