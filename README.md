@@ -28,13 +28,13 @@ Given the limited time of the hackathon, our team didn't fully complete the proj
 
 ## quickstart guide
 1. start the flask server that's hosting Anthropic API in order to access Claude
-   '''
+   ```
    python3 backend/src/claude_prompt.py
-   '''
+   ```
    if you run across port issues, make sure to kill any processes using that port.
    if the port continues to be used (and you're using mac with airreciever turned on) turn off airreciever.
 2. then start up the front end! in a new terminal ofc
-   '''
+   ```
    python3 -m http.server 8000
-   '''
+   ```
 
