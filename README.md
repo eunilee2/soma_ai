@@ -26,7 +26,7 @@ Given the limited time of the hackathon, our team didn't fully complete the proj
 * GCal + Gmail integration
 * and more
 
-quickstart guide
+## quickstart guide
 1. start the flask server that's hosting Anthropic API in order to access Claude
    '''
    python3 backend/src/claude_prompt.py
