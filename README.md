@@ -1,6 +1,8 @@
 # soma_ai
 
-A 6?-hour (9:30AM to 7:00PM but actually used up less time) hackathon building semi-autonomous AI solutions.  Front end by Brenda  Backend + AI integration by Eunice  
+A 6?-hour (9:30AM to 7:00PM but actually used up less time) hackathon building semi-autonomous AI solutions.
+Front end by Brenda \
+Backend + AI integration by Eunice \
 
 We built a new way of automating scheduling (and hopefully insurance in the future!) between patients and small family practice clinics. 
 ## But why is this an issue?
