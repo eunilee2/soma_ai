@@ -26,6 +26,8 @@ Given the limited time of the hackathon, our team didn't fully complete the proj
 * GCal + Gmail integration
 * and more
 
+the brainstorm doc lol: https://docs.google.com/document/d/1W0emcmGwld06ui5l1VKekuyuFoA9XccrVtWdf7Ge4Ls/edit?tab=t.0
+
 ## quickstart guide
 1. start the flask server that's hosting Anthropic API in order to access Claude
    ```
